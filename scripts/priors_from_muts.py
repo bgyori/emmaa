@@ -19,7 +19,7 @@ def get_terms(ctype):
 '''
 
 
-def get_top_genes(ctype)
+def get_top_genes(ctype):
     mut_file = f'mutations_{ctype}.json'
     with open(mut_file, 'r') as fh:
         mut_counts = json.load(fh)

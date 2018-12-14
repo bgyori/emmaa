@@ -115,12 +115,22 @@ class EmmaaModel(object):
         stmts : list[indra.statements.Statement]
             The list of assembled INDRA Statements.
         """
+        # TODO: this could be reimplemented as a pipeline to avoid code
+        # repetition
+        all_filtered_ids = set()
         stmts = self.get_indra_stmts()
-        stmts = ac.filter_no_hypothesis(stmts)
-        stmts = ac.map_grounding(stmts)
-        stmts = ac.map_sequence(stmts)
-        stmts = ac.filter_human_only(stmts)
-        stmts = ac.run_preassembly(stmts, return_toplevel=False)
+        stmts, filtered_ids = run_with_classify(ac.filter_no_hypothesis, stmts)
+        all_filtered_ids |= filtered_ids
+        stmts, filtered_ids = run_with_classify(ac.map_grounding, stmts)
+        all_filtered_ids |= filtered_ids
+        stmts, filtered_ids = run_with_classify(ac.map_sequence, stmts)
+        all_filtered_ids |= filtered_ids
+        stmts, filtered_ids = run_with_classify(ac.filter_human_only, stmts)
+        all_filtered_ids |= filtered_ids
+        stmts, filtered_ids = run_with_classify(ac.run_preassembly, stmts,
+                                                return_toplevel=False)
+        all_filtered_ids |= filtered_ids
+        # TODO: filter for relevance
         return stmts
 
     def upload_to_ndex(self):
@@ -144,6 +154,11 @@ class EmmaaModel(object):
         obj = client.get_object(Bucket='emmaa', Key=fname)
         stmts = pickle.loads(obj['Body'].read())
         self.stmts = stmts
+
+
+def run_with_classify(fun, stmts, **kwargs):
+    stmts_out = fun(stmts, **kwargs)
+    return stmts_out, {s.uuid for s in stmts} - {s.uuid for s in stmts_out}
 
 
 def load_model(name, config_file):
