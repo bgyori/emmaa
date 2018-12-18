@@ -127,11 +127,35 @@ class EmmaaModel(object):
         all_filtered_ids |= filtered_ids
         stmts, filtered_ids = run_with_classify(ac.filter_human_only, stmts)
         all_filtered_ids |= filtered_ids
+        stmts, filtered_ids = run_with_classify(self.filter_relevance, stmts)
+        all_filtered_ids |= filtered_ids
+
+
+
         stmts, filtered_ids = run_with_classify(ac.run_preassembly, stmts,
                                                 return_toplevel=False)
-        all_filtered_ids |= filtered_ids
         # TODO: filter for relevance
         return stmts
+
+    def filter_relevance(self, stmts):
+        """Filter a list of Statements by relevance wrt prior search terms.
+
+        Parameters
+        ----------
+        stmts : list[indra.statement.Statement]
+            A list of INDRA Statements to filter
+        """
+        # First look at search term names
+        stmts_out = []
+        filtered_ids = []
+        stnames = {s.name for s in self.search_terms}
+        for stmt in stmts:
+            agnames = {a.name for a in stmt.agent_list() if a is not None}
+            if agnames & stnames:
+                stmts_out.append(stmt)
+            else:
+                filtered_ids.append(stmt.uuid)
+        return stmts_out, filtered_ids
 
     def upload_to_ndex(self):
         """Upload the assembled model as CX to NDEx"""
